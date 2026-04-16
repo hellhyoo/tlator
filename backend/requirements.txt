@@ -4,3 +4,5 @@ numpy==2.2.5
 sounddevice==0.5.1
 webrtcvad-wheels==2.0.14
 faster-whisper==1.1.1
+fugashi==1.3.2
+unidic-lite==1.0.8
