@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Subtitles</title>
+  <style>
+    body { margin: 0; background: #020617; color: #e2e8f0; font-family: Inter, system-ui, sans-serif; display: grid; min-height: 100vh; place-items: center; }
+    .card { width: min(980px, 94vw); border: 1px solid #1e293b; border-radius: 16px; padding: 20px; background: rgba(15, 23, 42, 0.8); }
+    .stable, .unstable { min-height: 58px; line-height: 1.75; font-size: clamp(20px, 3.1vw, 36px); }
+    .stable { color: #f8fafc; }
+    .unstable { color: #94a3b8; filter: blur(0.4px); }
+    .token { animation: fade .2s ease-in; }
+    .meta { margin-top: 10px; color: #64748b; font-size: 14px; }
+    @keyframes fade { from { opacity: 0; transform: translateY(3px);} to {opacity:1; transform:none;} }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div id="stable" class="stable"></div>
+    <div id="unstable" class="unstable"></div>
+    <div id="meta" class="meta">Подключение к ws://localhost:8000/ws/subtitles ...</div>
+  </div>
+
+<script>
+  const stableEl = document.getElementById('stable');
+  const unstableEl = document.getElementById('unstable');
+  const metaEl = document.getElementById('meta');
+
+  let activeTimers = [];
+
+  function clearTimers() {
+    activeTimers.forEach((t) => clearTimeout(t));
+    activeTimers = [];
+  }
+
+  function render(tokens, emittedAt) {
+    clearTimers();
+    stableEl.textContent = '';
+    unstableEl.textContent = '';
+
+    const base = performance.now();
+    tokens.forEach((tok, idx) => {
+      const delay = Math.max(0, ((tok.start || 0) * 1000) - 1500);
+      const timer = setTimeout(() => {
+        const span = `<span class=\"token\">${tok.text}</span>`;
+        if (tok.stable) {
+          stableEl.innerHTML += span;
+        } else {
+          unstableEl.innerHTML += span;
+        }
+      }, delay + idx * 8);
+      activeTimers.push(timer);
+    });
+
+    const latency = (Date.now() / 1000 - emittedAt).toFixed(2);
+    metaEl.textContent = `Токенов: ${tokens.length}. UI lag: ${latency}s`;
+  }
+
+  const ws = new WebSocket('ws://localhost:8000/ws/subtitles');
+
+  ws.onopen = () => { metaEl.textContent = 'Подключено. Слушаю микрофон...'; };
+
+  ws.onmessage = (event) => {
+    const payload = JSON.parse(event.data);
+    if (payload.error) {
+      metaEl.textContent = `Ошибка движка: ${payload.error}`;
+      return;
+    }
+    render(payload.tokens || [], payload.emitted_at || Date.now() / 1000);
+  };
+
+  ws.onerror = () => { metaEl.textContent = 'Ошибка WebSocket. Проверьте backend и доступ к микрофону.'; };
+  ws.onclose = () => { metaEl.textContent = 'WebSocket закрыт.'; };
+</script>
+</body>
+</html>
