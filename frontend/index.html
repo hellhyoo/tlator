@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Subtitles Prototype</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      display: grid;
+      min-height: 100vh;
+      place-items: center;
+    }
+    .card {
+      width: min(900px, 92vw);
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid #334155;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+    }
+    .stable, .unstable {
+      min-height: 56px;
+      line-height: 1.7;
+      font-size: clamp(20px, 3.2vw, 34px);
+      letter-spacing: 0.02em;
+    }
+    .stable { color: #f8fafc; }
+    .unstable {
+      color: #94a3b8;
+      filter: blur(0.3px);
+      transition: opacity 180ms ease-in;
+    }
+    .token { animation: fadeIn 180ms ease-in; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .hint { margin-top: 14px; color: #64748b; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div id="stable" class="stable"></div>
+    <div id="unstable" class="unstable"></div>
+    <div class="hint">WebSocket: ws://localhost:8000/ws/subtitles</div>
+  </div>
+
+  <script>
+    const stableEl = document.getElementById('stable');
+    const unstableEl = document.getElementById('unstable');
+
+    const ws = new WebSocket('ws://localhost:8000/ws/subtitles');
+
+    ws.onmessage = (event) => {
+      const payload = JSON.parse(event.data);
+      const stable = [];
+      const unstable = [];
+
+      payload.tokens.forEach((t) => {
+        (t.stable ? stable : unstable).push(`<span class="token">${t.text}</span>`);
+      });
+
+      stableEl.innerHTML = stable.join(' ');
+      unstableEl.innerHTML = unstable.join(' ');
+    };
+
+    ws.onerror = () => {
+      unstableEl.textContent = 'Ошибка WebSocket. Проверьте backend.';
+    };
+  </script>
+</body>
+</html>
